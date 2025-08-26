@@ -16,10 +16,7 @@ def load_resources():
         final_xgb_model = joblib.load('final_xgb_model.pkl')
         all_items_df = pd.read_csv('sample_df.csv')
         
-        # We need to re-create the columns used for training the model
-        temp_df = pd.get_dummies(all_items_df, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
-        training_columns = ['visitorid', 'itemid', 'available'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
-        
+        training_columns = final_xgb_model.feature_names
         return final_xgb_model, all_items_df, training_columns
     except FileNotFoundError as e:
         st.error(f"Error loading files: {e}. Please make sure 'final_xgb_model.pkl' and 'unique_items.csv' are in the same directory.")
@@ -38,6 +35,7 @@ def recommend_items_for_user(visitorid, all_items_df, trained_model, training_co
     items_to_predict_encoded = pd.get_dummies(items_to_predict, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
     
     items_to_predict_encoded = items_to_predict_encoded.reindex(columns=training_columns, fill_value=0)
+    
 
     probabilities = trained_model.predict_proba(items_to_predict_encoded)[:, 1]
     
