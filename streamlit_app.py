@@ -2,6 +2,7 @@ import streamlit as st
 import joblib
 import pandas as pd
 import numpy as np
+import os
 
 # Use Streamlit's caching to load the model and data only once
 # This is crucial for performance as it avoids re-loading on every user interaction
@@ -20,6 +21,16 @@ def load_resources():
         temp_df = pd.get_dummies(all_items_df, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
         training_columns = ['categoryid', 'parentid', 'available', 'visitorid', 'itemid'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
         
+        if os.path.exists('training_columns.txt'):
+            with open('training_columns.txt', 'r') as f:
+                training_columns = [line.strip() for line in f]
+        else:
+            # Fallback method: If the file doesn't exist, get feature names from the model
+            temp_df = pd.get_dummies(all_items_df, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
+            training_columns = ['categoryid', 'parentid', 'available', 'visitorid', 'itemid'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
+            st.warning("Could not find 'training_columns.txt'. Using feature names from the model. "
+                       "For production, it is recommended to save and load the training columns explicitly.")
+            
         return final_xgb_model, all_items_df, training_columns
     except FileNotFoundError as e:
         st.error(f"Error loading files: {e}. Please make sure 'final_xgb_model.pkl' and 'unique_items.csv' are in the same directory.")
