@@ -16,7 +16,10 @@ def load_resources():
         final_xgb_model = joblib.load('final_xgb_model.pkl')
         all_items_df = pd.read_csv('sample_df.csv')
         
-        training_columns = final_xgb_model.feature_names
+        # We need to re-create the columns used for training the model
+        temp_df = pd.get_dummies(all_items_df, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
+        training_columns = ['categoryid', 'parentid', 'available', 'visitorid', 'itemid'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
+        
         return final_xgb_model, all_items_df, training_columns
     except FileNotFoundError as e:
         st.error(f"Error loading files: {e}. Please make sure 'final_xgb_model.pkl' and 'unique_items.csv' are in the same directory.")
