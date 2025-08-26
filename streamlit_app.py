@@ -14,7 +14,7 @@ def load_resources():
     """
     try:
         final_xgb_model = joblib.load('final_xgb_model.pkl')
-        all_items_df = pd.read_csv('unique_items.csv')
+        all_items_df = pd.read_csv('sample_df.csv')
         
         # We need to re-create the columns used for training the model
         temp_df = pd.get_dummies(all_items_df, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
