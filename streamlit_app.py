@@ -17,15 +17,21 @@ def load_resources():
         final_xgb_model = joblib.load('final_xgb_model.pkl')
         all_items_df = pd.read_csv('sample_df.csv')
         
-        # We need to re-create the columns used for training the model
-        features_to_use = ['categoryid', 'parentid', 'available', 'visitorid', 'itemid']
-        temp_df = pd.get_dummies(all_items_df[features_to_use], columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
-        training_columns = ['visitorid', 'itemid', 'available'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
-        
+        if os.path.exists('training_columns.txt'):
+            with open('training_columns.txt', 'r') as f:
+                training_columns = [line.strip() for line in f]
+        else:
+            # Fallback method: If the file doesn't exist, get feature names from the model
+            training_columns = final_xgb_model.feature_names
+            st.warning("Could not find 'training_columns.txt'. Using feature names from the model. "
+                       "For production, it is recommended to save and load the training columns explicitly.")
             
         return final_xgb_model, all_items_df, training_columns
     except FileNotFoundError as e:
         st.error(f"Error loading files: {e}. Please make sure 'final_xgb_model.pkl' and 'unique_items.csv' are in the same directory.")
+        st.stop()
+    except AttributeError:
+        st.error("The loaded model does not have 'feature_names'. This may happen if the model was not trained with a dataframe. Please re-train and save your model correctly.")
         st.stop()
 
 final_xgb_model, all_items_df, training_columns = load_resources()
@@ -52,7 +58,11 @@ def recommend_items_for_user(visitorid, all_items_df, trained_model, training_co
     
     items_to_predict_encoded = items_to_predict_encoded.reindex(columns=training_columns, fill_value=0)
     
-
+    if not all(col in items_to_predict_encoded.columns for col in training_columns):
+        missing_cols = set(training_columns) - set(items_to_predict_encoded.columns)
+        st.error(f"Prediction failed: The DataFrame is missing critical columns: {list(missing_cols)}")
+        st.stop()
+    
     probabilities = trained_model.predict_proba(items_to_predict_encoded)[:, 1]
     
     items_to_predict['likelihood'] = probabilities
