@@ -14,6 +14,15 @@ def load_resources():
         tuple: (trained_model, all_items_df, training_columns)
     """
     try:
+        if not os.path.exists('final_xgb_model.pkl'):
+            st.error("Error: 'final_xgb_model.pkl' not found. Please ensure it's in the app's directory.")
+            st.stop()
+        if not os.path.exists('sample_df.csv'):
+            st.error("Error: 'sample_df.csv' not found. Please ensure it's in the app's directory.")
+            st.stop()
+        if not os.path.exists('training_columns.txt'):
+            st.warning("Warning: 'training_columns.txt' not found. Using feature names from the model. For production, it is recommended to save and load the training columns explicitly.")
+
         final_xgb_model = joblib.load('final_xgb_model.pkl')
         all_items_df = pd.read_csv('sample_df.csv')
         
