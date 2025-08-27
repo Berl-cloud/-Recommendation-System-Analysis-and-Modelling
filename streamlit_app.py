@@ -18,18 +18,10 @@ def load_resources():
         all_items_df = pd.read_csv('sample_df.csv')
         
         # We need to re-create the columns used for training the model
-        temp_df = pd.get_dummies(all_items_df, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
-        training_columns = ['categoryid', 'parentid', 'available', 'visitorid', 'itemid'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
+        features_to_use = ['categoryid', 'parentid', 'available', 'visitorid', 'itemid']
+        temp_df = pd.get_dummies(all_items_df[features_to_use], columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
+        training_columns = ['visitorid', 'itemid', 'available'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
         
-        if os.path.exists('training_columns.txt'):
-            with open('training_columns.txt', 'r') as f:
-                training_columns = [line.strip() for line in f]
-        else:
-            # Fallback method: If the file doesn't exist, get feature names from the model
-            temp_df = pd.get_dummies(all_items_df, columns=['categoryid', 'parentid'], prefix=['cat', 'parent'])
-            training_columns = ['categoryid', 'parentid', 'available', 'visitorid', 'itemid'] + [col for col in temp_df.columns if 'cat_' in col or 'parent_' in col]
-            st.warning("Could not find 'training_columns.txt'. Using feature names from the model. "
-                       "For production, it is recommended to save and load the training columns explicitly.")
             
         return final_xgb_model, all_items_df, training_columns
     except FileNotFoundError as e:
@@ -42,6 +34,16 @@ final_xgb_model, all_items_df, training_columns = load_resources()
 def recommend_items_for_user(visitorid, all_items_df, trained_model, training_columns, top_n=5):
     """
     Generates a list of top-N recommended items for a given user based on the model's predictions.
+    
+    Args:
+        visitorid (int): The ID of the visitor to generate recommendations for.
+        all_items_df (pd.DataFrame): The DataFrame containing all unique items and their properties.
+        trained_model (XGBClassifier): The trained XGBoost model.
+        training_columns (list): The list of feature columns the model was trained on.
+        top_n (int): The number of top recommendations to return.
+
+    Returns:
+        pd.DataFrame: A DataFrame of the top-N recommended items with their predicted likelihood.
     """
     items_to_predict = all_items_df.copy()
     items_to_predict['visitorid'] = visitorid
@@ -80,10 +82,10 @@ if st.button('Get Recommendations'):
                 all_items_df,
                 final_xgb_model,
                 training_columns,
-                top_n=10
+                top_n=5
             )
             
-            st.success(f"Top 10 Recommendations for Visitor {visitor_id}:")
+            st.success(f"Top 5 Recommendations for Visitor {visitor_id}:")
             st.dataframe(recommendations.style.format({'likelihood': '{:.2f}'}), use_container_width=True)
     else:
         st.warning('Please select a Visitor ID.')
