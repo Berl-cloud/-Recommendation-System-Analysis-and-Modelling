@@ -4,6 +4,82 @@ import pandas as pd
 import numpy as np
 import os
 
+# --- Custom CSS ---
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+    
+    html, body, [class*="st-"] {
+        font-family: 'Roboto', sans-serif;
+    }
+
+    /* Main title styling */
+    .st-emotion-cache-183n00d {
+        color: #FFFFFF;
+        background: -webkit-linear-gradient(45deg, #1A5276, #A9CCE3);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+        text-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    /* Subtitle styling */
+    h3 {
+        color: #FFFFFF;
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #2E4053;
+        color: #EAECEE;
+    }
+    
+    /* Selectbox styling */
+    .st-emotion-cache-n22h0a {
+        border-color: #5DADE2;
+    }
+    .st-emotion-cache-n22h0a:hover {
+        border-color: #4CAF50;
+    }
+    
+    /* Button styling */
+    .st-emotion-cache-7ym5gk {
+        background-color: #5DADE2;
+        color: #FFFFFF;
+        border: none;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    }
+    .st-emotion-cache-7ym5gk:hover {
+        background-color: #4CAF50;
+    }
+    
+    /* Success box styling */
+    [data-testid="stSuccess"] {
+        background-color: #A9CCE3;
+        color: #1A5276;
+        border-radius: 10px;
+        border: 2px solid #5DADE2;
+        box-shadow: 4px 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Data table styling */
+    .st-emotion-cache-90vs1b {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="Product Recommender",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'About': "This is a custom-built e-commerce recommendation app."
+    }
+)
 # Use Streamlit's caching to load the model and data only once
 # This is crucial for performance as it avoids re-loading on every user interaction
 @st.cache_resource
@@ -82,29 +158,45 @@ def recommend_items_for_user(visitorid, all_items_df, trained_model, training_co
 
 
 # --- Streamlit UI ---
-st.title('E-Commerce Recommendation Engine')
+st.markdown("<h1 style='text-align: center; color: #4CAF50;'>🛍️ E-Commerce Recommendation Engine 🛍️</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; color: #66BB6A;'>Powered by XGBoost</h3>", unsafe_allow_html=True)
 
-st.write("This application demonstrates the predictive power of our XGBoost recommendation model.")
+st.write("This application demonstrates the predictive power of our machine learning recommendation model. Select a visitor ID from the sidebar and get instant, personalized recommendations!")
 
-# Get a list of unique visitor IDs to populate the selectbox
-unique_visitors = all_items_df['visitorid'].unique()
-visitor_id = st.selectbox(
-    'Select a Visitor ID to get recommendations:',
-    unique_visitors
-)
+# Sidebar for user input
+with st.sidebar:
+    st.header("Visitor Selection")
+    # Get a list of unique visitor IDs to populate the selectbox
+    if 'visitorid' in all_items_df.columns:
+        unique_visitors = all_items_df['visitorid'].unique()
+        visitor_id = st.selectbox(
+            'Select a Visitor ID:',
+            unique_visitors
+        )
 
-if st.button('Get Recommendations'):
-    if visitor_id:
-        with st.spinner('Generating recommendations...'):
-            recommendations = recommend_items_for_user(
-                visitor_id,
-                all_items_df,
-                final_xgb_model,
-                training_columns,
-                top_n=5
-            )
-            
-            st.success(f"Top 5 Recommendations for Visitor {visitor_id}:")
-            st.dataframe(recommendations.style.format({'likelihood': '{:.2f}'}), use_container_width=True)
+        if st.button('Get Recommendations'):
+            if visitor_id:
+                with st.spinner('Generating recommendations...'):
+                    recommendations = recommend_items_for_user(
+                        visitor_id,
+                        all_items_df,
+                        final_xgb_model,
+                        training_columns,
+                        top_n=5
+                    )
+                    st.session_state.recommendations = recommendations
+                    st.session_state.visitor_id = visitor_id
+            else:
+                st.warning('Please select a Visitor ID.')
     else:
-        st.warning('Please select a Visitor ID.')
+        st.error("The 'visitorid' column was not found in the unique_items.csv file. Please check your data.")
+
+# Main content area for displaying results
+st.markdown("---")
+if 'recommendations' in st.session_state and st.session_state.recommendations is not None:
+    st.success(f"Top 10 Recommendations for Visitor {st.session_state.visitor_id}:")
+    
+    # Display the table with a bit of styling
+    st.table(st.session_state.recommendations.style.format({'likelihood': '{:.2f}'}))
+else:
+    st.info("Select a visitor ID from the sidebar and click 'Get Recommendations' to see results.")
